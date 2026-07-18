@@ -1,0 +1,1053 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QA Audit Command Center</title>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<style>
+:root{
+  --bg:#0b1120; --bg2:#0f1729; --card:#141d33; --card2:#182140;
+  --border:#243356; --text:#e7ecfb; --sub:#8b97b8; --muted:#5c6a8f;
+  --accent:#22d3ee; --accent2:#818cf8; --good:#34d399; --warn:#fbbf24; --bad:#fb7185;
+  --radius:14px; --shadow:0 8px 24px rgba(0,0,0,.35);
+}
+body.light{
+  --bg:#f3f5fb; --bg2:#ffffff; --card:#ffffff; --card2:#f7f9ff;
+  --border:#e1e6f5; --text:#12172b; --sub:#5b6684; --muted:#8891ab;
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,-apple-system,sans-serif;transition:background .3s,color .3s;}
+a{color:inherit;}
+.wrap{max-width:1500px;margin:0 auto;padding:20px 22px 60px;}
+header.top{display:flex;flex-wrap:wrap;gap:14px;justify-content:space-between;align-items:center;padding:18px 0 10px;border-bottom:1px solid var(--border);margin-bottom:18px;}
+.brand{display:flex;align-items:center;gap:12px;}
+.brand .dot{width:12px;height:12px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px var(--accent);animation:pulse 1.8s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.35;}}
+.brand h1{font-size:20px;margin:0;letter-spacing:.3px;}
+.brand p{margin:2px 0 0;color:var(--sub);font-size:12.5px;}
+.top-actions{display:flex;gap:8px;flex-wrap:wrap;}
+button{cursor:pointer;font-family:inherit;}
+.btn{background:var(--card2);border:1px solid var(--border);color:var(--text);padding:8px 14px;border-radius:9px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;transition:.2s;}
+.btn:hover{border-color:var(--accent);color:var(--accent);}
+.btn.primary{background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;color:#04121c;}
+.btn.primary:hover{filter:brightness(1.1);color:#04121c;}
+.status-bar{display:flex;flex-wrap:wrap;gap:18px;align-items:center;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:12px 18px;margin-bottom:18px;font-size:12.5px;color:var(--sub);}
+.status-bar b{color:var(--text);}
+.livepill{display:inline-flex;align-items:center;gap:6px;background:rgba(52,211,153,.12);color:var(--good);padding:4px 10px;border-radius:999px;font-weight:700;font-size:11px;letter-spacing:.5px;}
+.livepill .d{width:7px;height:7px;background:var(--good);border-radius:50%;animation:pulse 1.5s infinite;}
+
+.filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:20px;}
+.filters select,.filters input{width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:9px 10px;border-radius:8px;font-size:13px;}
+.filters label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px;}
+.filters .fitem{display:flex;flex-direction:column;}
+.filters .reset{align-self:flex-end;}
+
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:12px;margin-bottom:22px;}
+.kpi{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);position:relative;overflow:hidden;}
+.kpi .lbl{font-size:11.5px;color:var(--sub);text-transform:uppercase;letter-spacing:.5px;font-weight:700;}
+.kpi .val{font-size:26px;font-weight:800;margin-top:6px;}
+.kpi .sub{font-size:11.5px;color:var(--muted);margin-top:4px;}
+.kpi.accent .val{color:var(--accent);}
+.kpi.bad .val{color:var(--bad);}
+.kpi.good .val{color:var(--good);}
+.kpi.warn .val{color:var(--warn);}
+
+section{margin-bottom:26px;}
+.sec-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;flex-wrap:wrap;gap:6px;}
+.sec-head h2{font-size:16px;margin:0;}
+.sec-head span{font-size:12px;color:var(--sub);}
+
+.grid2{display:grid;grid-template-columns:1.3fr 1fr;gap:16px;}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
+@media(max-width:900px){.grid2,.grid3{grid-template-columns:1fr;}}
+
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);}
+.card canvas{max-height:280px;}
+
+.insights{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;}
+.insight-card{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--accent);border-radius:10px;padding:14px 16px;}
+.insight-card.bad{border-left-color:var(--bad);}
+.insight-card.good{border-left-color:var(--good);}
+.insight-card.warn{border-left-color:var(--warn);}
+.insight-card .tag{font-size:10.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--sub);font-weight:700;}
+.insight-card .txt{margin-top:6px;font-size:13.5px;line-height:1.5;}
+.insight-card b{color:var(--accent);}
+
+table{width:100%;border-collapse:collapse;font-size:13px;}
+th,td{padding:9px 10px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap;}
+th{color:var(--sub);font-weight:700;font-size:11.5px;text-transform:uppercase;letter-spacing:.4px;cursor:pointer;position:sticky;top:0;background:var(--card);}
+th:hover{color:var(--accent);}
+tbody tr:hover{background:var(--card2);}
+.table-wrap{overflow:auto;max-height:420px;border-radius:10px;}
+.badge{padding:2px 9px;border-radius:999px;font-size:11px;font-weight:700;}
+.badge.pass{background:rgba(52,211,153,.14);color:var(--good);}
+.badge.fail{background:rgba(251,113,133,.14);color:var(--bad);}
+.badge.na{background:rgba(139,151,184,.14);color:var(--muted);}
+
+.matrix-wrap{overflow:auto;max-height:440px;border-radius:10px;}
+.matrix{border-collapse:collapse;font-size:12px;}
+.matrix th,.matrix td{border:1px solid var(--border);padding:6px 8px;text-align:center;white-space:nowrap;}
+.matrix th{position:sticky;top:0;background:var(--card);z-index:2;}
+.matrix th.evrow{position:sticky;left:0;background:var(--card);z-index:3;text-align:left;}
+.matrix td.evname{position:sticky;left:0;background:var(--card);text-align:left;font-weight:700;z-index:1;}
+.matrix td.cell{font-weight:700;color:var(--bg);}
+
+.note{font-size:11.5px;color:var(--muted);margin-top:8px;line-height:1.5;}
+.lockicon{opacity:.7;}
+
+#loadOverlay{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;gap:14px;}
+.spinner{width:46px;height:46px;border:4px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 1s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+#loadOverlay p{color:var(--sub);font-size:13.5px;}
+
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:500;align-items:center;justify-content:center;padding:20px;}
+.modal-bg.show{display:flex;}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:16px;max-width:720px;width:100%;max-height:82vh;overflow:auto;padding:22px;}
+.modal h3{margin-top:0;}
+.modal .close{float:right;background:none;border:none;color:var(--sub);font-size:20px;}
+footer{text-align:center;color:var(--muted);font-size:12px;padding:24px 0 6px;}
+::-webkit-scrollbar{height:8px;width:8px;}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:8px;}
+</style>
+</head>
+<body>
+
+<div id="loadOverlay"><div class="spinner"></div><p id="loadMsg">Connecting to audit sheet...</p></div>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <div class="dot"></div>
+      <div>
+        <h1>QA Audit Command Center</h1>
+        <p>Live internal evaluation analytics · powered by Google Sheets</p>
+      </div>
+    </div>
+    <div class="top-actions">
+      <button class="btn" id="themeBtn">🌙 Dark</button>
+      <button class="btn" id="exportBtn">⬇ Export CSV</button>
+      <button class="btn primary" id="refreshBtn">↻ Refresh Now</button>
+    </div>
+  </header>
+
+  <div class="status-bar">
+    <span class="livepill"><span class="d"></span>LIVE</span>
+    <span>Rows loaded: <b id="stRows">-</b></span>
+    <span>Filtered: <b id="stFiltered">-</b></span>
+    <span>Data updated till: <b id="stLastDate">-</b></span>
+    <span>Last refresh: <b id="stLastRefresh">-</b></span>
+    <span>Auto refresh: every 5 min</span>
+  </div>
+
+  <div class="filters">
+    <div class="fitem"><label>Month</label><select id="fMonth"><option value="all">All</option></select></div>
+    <div class="fitem"><label>Date</label><select id="fDate"><option value="all">All</option></select></div>
+    <div class="fitem"><label>Evaluator</label><select id="fEval"><option value="all">All</option></select></div>
+    <div class="fitem"><label>Agent</label><select id="fAgent"><option value="all">All</option></select></div>
+    <div class="fitem"><label>Critical Error</label><select id="fCE"><option value="all">All</option><option value="Pass">Pass</option><option value="Fail">Fail</option></select></div>
+    <div class="fitem"><label>STS</label><select id="fSTS"><option value="all">All</option><option value="Pass">Pass</option><option value="Fail">Fail</option></select></div>
+    <div class="fitem"><label>Call Topic</label><select id="fTopic"><option value="all">All</option></select></div>
+    <div class="fitem reset"><button class="btn" id="resetBtn">✕ Reset filters</button></div>
+  </div>
+
+  <div class="kpi-grid">
+    <div class="kpi accent"><div class="lbl">Total Audits</div><div class="val" id="kTotal">-</div><div class="sub">In current filter</div></div>
+    <div class="kpi bad"><div class="lbl">Critical Error Fail</div><div class="val" id="kCEFail">-</div><div class="sub" id="kCEFailRate">-</div></div>
+    <div class="kpi warn"><div class="lbl">STS Fail</div><div class="val" id="kSTSFail">-</div><div class="sub" id="kSTSFailRate">-</div></div>
+    <div class="kpi good"><div class="lbl">Unique Agents Audited</div><div class="val" id="kAgents">-</div><div class="sub">Distinct Agent IDs</div></div>
+    <div class="kpi"><div class="lbl">Active Evaluators</div><div class="val" id="kEvals">-</div><div class="sub">Distinct auditors</div></div>
+    <div class="kpi"><div class="lbl">Avg Call Duration</div><div class="val" id="kDur">-</div><div class="sub">mm:ss average</div></div>
+  </div>
+
+  <section>
+    <div class="sec-head"><h2>📊 Smart Insights</h2><span>Auto-generated from current filtered data</span></div>
+    <div class="insights" id="insightsBox"></div>
+  </section>
+
+  <section class="grid2">
+    <div class="card">
+      <div class="sec-head"><h2>Daily Audit Volume & Critical Fail Trend</h2></div>
+      <canvas id="chartDaily"></canvas>
+    </div>
+    <div class="card">
+      <div class="sec-head"><h2>Critical Error / STS Split</h2></div>
+      <canvas id="chartDonut"></canvas>
+    </div>
+  </section>
+
+  <section class="grid2">
+    <div class="card">
+      <div class="sec-head"><h2>🔎 Critical-Fail Error Topics</h2><span>Count of tagged topics when Critical Error = Fail</span></div>
+      <canvas id="chartTopics"></canvas>
+    </div>
+    <div class="card">
+      <div class="sec-head"><h2>Call Topic Distribution</h2></div>
+      <canvas id="chartCallTopic"></canvas>
+    </div>
+  </section>
+
+  <section>
+    <div class="card">
+      <div class="sec-head">
+        <h2>🧑‍💼 Evaluator Audit Count by Date</h2>
+        <span>How many audits each evaluator logged, per day</span>
+      </div>
+      <div class="matrix-wrap" id="evalMatrixWrap"></div>
+      <p class="note">Darker cell = higher audit count that day for that evaluator. This view is evaluator-focused by design.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <h2>⏳ Pending Audit Tracker</h2>
+      <span id="pendingAsOf">Based on latest audit date · rule: 2 Fail = stop, 1 Fail = +5 Pass needed, 0 Fail = 10 Pass needed</span>
+    </div>
+    <div class="card table-wrap"><table id="pendingTable"><thead></thead><tbody></tbody></table></div>
+    <p class="note">Calculated from full unfiltered data (not affected by filters above) so it always reflects true pending status. "Fail" here means Critical Error fail only.</p>
+  </section>
+
+  <section>
+    <div class="sec-head"><h2>🏆 Evaluator Performance</h2><span>Click column header to sort · includes daily & monthly pending audit counts</span></div>
+    <div class="card table-wrap"><table id="evalTable"><thead></thead><tbody></tbody></table></div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <h2>👤 Agent Details <span class="lockicon" title="Evaluator identity intentionally hidden here">🔒</span></h2>
+      <span>Evaluators here are peer agents auditing each other's calls — auditor identity is intentionally excluded from this view to keep evaluations unbiased. Click a row for drilldown.</span>
+    </div>
+    <div class="card table-wrap"><table id="agentTable"><thead></thead><tbody></tbody></table></div>
+  </section>
+
+  <section>
+    <div class="sec-head"><h2>🧩 Error Topic Breakdown</h2><span>Only rows where Critical Error = Fail</span></div>
+    <div class="card table-wrap"><table id="topicTable"><thead></thead><tbody></tbody></table></div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <h2>📸 Fail Call Snapshot <span class="lockicon" title="No auditor/QA name included">🔒</span></h2>
+      <span>AI-organized English summary of failed-call remarks — Contact ID, Date & Topic only, no auditor/QA name</span>
+    </div>
+    <div class="card">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px;">
+        <button class="btn primary" id="snapGenBtn">🔄 Generate Snapshot</button>
+        <button class="btn" id="snapDownloadBtn" style="display:none;">⬇ Download PNG</button>
+        <span id="snapStatus" class="note" style="margin:0;">Uses currently active filters above · only Critical Error = Fail rows are included.</span>
+      </div>
+      <div id="snapshotContainer"></div>
+    </div>
+  </section>
+
+  <footer>Built with HTML, Chart.js & Google Sheets CSV · auto-refreshes every 5 minutes</footer>
+</div>
+
+<div class="modal-bg" id="agentModalBg">
+  <div class="modal">
+    <button class="close" id="modalClose">✕</button>
+    <h3 id="modalTitle">Agent</h3>
+    <div id="modalBody"></div>
+  </div>
+</div>
+
+<script>
+/* ================= CONFIG ================= */
+const SHEET_ID = "182Hkwni6XJOrn67tn0_b6fjg0GexvI22Le9B4C1Y3yk";
+const GID = "736684145";
+const CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&gid=${GID}`;
+const REFRESH_MS = 5 * 60 * 1000;
+const NA_VALUES = new Set(["","n/a","n\\a","na","none","nil","-","null"]);
+
+/* ================= STATE ================= */
+let RAW = [];
+let filters = { month:"all", date:"all", evaluator:"all", agent:"all", ce:"all", sts:"all", topic:"all" };
+let charts = {};
+let sortState = { eval:{key:"total",dir:-1}, agent:{key:"total",dir:-1} };
+
+/* ================= HELPERS ================= */
+function isNA(v){ return !v || NA_VALUES.has(String(v).trim().toLowerCase()); }
+function norm(v){ return (v||"").toString().trim(); }
+function normPassFail(v){
+  const s = norm(v).toLowerCase();
+  if(s.startsWith("pass")) return "Pass";
+  if(s.startsWith("fail")) return "Fail";
+  return s ? norm(v) : "Unknown";
+}
+function parseTopics(str){
+  if(isNA(str)) return [];
+  return str.split(/[,/;|]+/).map(t=>t.trim()).filter(t=>t && !isNA(t));
+}
+function parseDurationToSec(str){
+  if(isNA(str)) return null;
+  const parts = str.split(":").map(Number);
+  if(parts.some(isNaN)) return null;
+  if(parts.length===2) return parts[0]*60+parts[1];
+  if(parts.length===3) return parts[0]*3600+parts[1]*60+parts[2];
+  return null;
+}
+function secToMMSS(sec){
+  if(sec==null || isNaN(sec)) return "-";
+  sec = Math.round(sec);
+  const m = Math.floor(sec/60), s = sec%60;
+  return `${m}:${String(s).padStart(2,"0")}`;
+}
+function fmtDate(d){
+  if(!d) return "-";
+  return `${d.getMonth()+1}/${d.getDate()}/${d.getFullYear()}`;
+}
+function pct(a,b){ return b>0 ? ((a/b)*100) : 0; }
+function pctStr(a,b,decimals=1){ return b>0 ? (a/b*100).toFixed(decimals)+"%" : "0%"; }
+
+/* ================= AUDIT COMPLETION RULE ================= */
+// Rule: up to 10 calls/agent/day. 2 Fail -> stop immediately (complete).
+// 1 Fail -> continue until 5 more Pass after that fail (complete). 0 Fail -> need 10 Pass.
+// "Fail" = Critical Error fail only.
+function computeAuditGroups(rows){
+  const groups = {};
+  rows.forEach(r=>{
+    const key = r.evaluator+"||"+r.agent+"||"+r.dateKey;
+    groups[key] = groups[key] || {evaluator:r.evaluator, agent:r.agent, dateKey:r.dateKey, dateObj:r.dateObj, calls:[]};
+    groups[key].calls.push(r);
+  });
+  return Object.values(groups).map(g=>{
+    const calls = [...g.calls].sort((a,b)=>{
+      const ta = Date.parse(a.timestamp) || a.dateObj.getTime();
+      const tb = Date.parse(b.timestamp) || b.dateObj.getTime();
+      return ta - tb;
+    });
+    let failCount=0, passAfterFail=0, totalPass=0, doneCount=0, completed=false;
+    for(const c of calls){
+      doneCount++;
+      if(c.ce==="Fail"){
+        failCount++;
+        passAfterFail=0;
+        if(failCount>=2){ completed=true; break; }
+      } else if(c.ce==="Pass"){
+        totalPass++;
+        if(failCount===1){
+          passAfterFail++;
+          if(passAfterFail>=5){ completed=true; break; }
+        }
+      }
+    }
+    if(!completed && failCount===0 && totalPass>=10) completed=true;
+    let remaining;
+    if(completed) remaining = 0;
+    else if(failCount===0) remaining = Math.max(10-totalPass,0);
+    else remaining = Math.max(5-passAfterFail,0);
+    return {
+      evaluator:g.evaluator, agent:g.agent, dateKey:g.dateKey, dateObj:g.dateObj,
+      callsDone: calls.length, failCount, completed, remaining,
+      status: completed ? "Completed" : "Pending"
+    };
+  });
+}
+function monthKeyOf(d){ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`; }
+
+/* ================= LOAD ================= */
+async function loadData(isRefresh){
+  const msg = document.getElementById("loadMsg");
+  if(!isRefresh){ document.getElementById("loadOverlay").style.display="flex"; }
+  if(msg) msg.textContent = "Fetching live sheet data...";
+  try{
+    const res = await fetch(CSV_URL + "&_ts=" + Date.now(), {cache:"no-store"});
+    if(!res.ok) throw new Error("HTTP "+res.status);
+    const csv = await res.text();
+    const parsed = Papa.parse(csv, { header:true, skipEmptyLines:true });
+    const rows = parsed.data.map(cleanRow).filter(r=>r && r.agent && r.dateObj);
+    RAW = rows;
+    populateFilterOptions();
+    renderAll();
+    document.getElementById("stLastRefresh").textContent = new Date().toLocaleTimeString();
+  }catch(err){
+    console.error(err);
+    if(msg) msg.textContent = "Could not load sheet. Check sharing permissions / internet.";
+    document.getElementById("stLastRefresh").textContent = "Failed: "+new Date().toLocaleTimeString();
+  }finally{
+    document.getElementById("loadOverlay").style.display="none";
+  }
+}
+
+function cleanRow(r){
+  const o = {};
+  Object.keys(r).forEach(k=>{ o[k.trim()] = typeof r[k]==="string" ? r[k].trim() : r[k]; });
+  const agent = norm(o["Agent ID"]);
+  const evaluator = norm(o["Evaluator ID"]);
+  if(!agent) return null;
+  let dateStr = norm(o["Date"]) || norm(o["Timestamp"]);
+  let dateObj = dateStr ? new Date(dateStr) : null;
+  if(dateObj && isNaN(dateObj.getTime())) dateObj = null;
+  if(!dateObj) return null;
+  return {
+    timestamp: norm(o["Timestamp"]),
+    evaluator: evaluator || "Unknown",
+    agent,
+    dateObj,
+    dateKey: fmtDate(dateObj),
+    monthKey: `${dateObj.getFullYear()}-${String(dateObj.getMonth()+1).padStart(2,"0")}`,
+    contactId: norm(o["Contact ID"]),
+    msisdn: norm(o["MSISDN"]),
+    ce: normPassFail(o["Critical Error"]),
+    sts: normPassFail(o["STS"]),
+    empathy: norm(o["Empathy Observation (If Any)"]),
+    errorTopicRaw: norm(o["Error Topic (If Any)"]),
+    remarks: norm(o["Remarks (If Any)"]),
+    durationSec: parseDurationToSec(o["Call Duration"]),
+    callTopic: isNA(o["Call Topic"]) ? "Unspecified" : norm(o["Call Topic"])
+  };
+}
+
+/* ================= FILTER OPTIONS ================= */
+function uniqueSorted(arr){ return [...new Set(arr)].filter(Boolean).sort((a,b)=>a.localeCompare(b)); }
+function populateFilterOptions(){
+  fillSelect("fMonth", uniqueSorted(RAW.map(r=>r.monthKey)));
+  fillSelect("fDate", uniqueSorted(RAW.map(r=>r.dateKey)).sort((a,b)=>new Date(a)-new Date(b)));
+  fillSelect("fEval", uniqueSorted(RAW.map(r=>r.evaluator)));
+  fillSelect("fAgent", uniqueSorted(RAW.map(r=>r.agent)));
+  fillSelect("fTopic", uniqueSorted(RAW.map(r=>r.callTopic)));
+}
+function fillSelect(id, values){
+  const sel = document.getElementById(id);
+  const current = sel.value;
+  sel.innerHTML = `<option value="all">All</option>` + values.map(v=>`<option value="${escAttr(v)}">${escHtml(v)}</option>`).join("");
+  if(values.includes(current)) sel.value = current;
+}
+function escHtml(s){ return String(s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function escAttr(s){ return escHtml(s); }
+
+/* ================= FILTERING ================= */
+function getFiltered(){
+  return RAW.filter(r=>
+    (filters.month==="all" || r.monthKey===filters.month) &&
+    (filters.date==="all" || r.dateKey===filters.date) &&
+    (filters.evaluator==="all" || r.evaluator===filters.evaluator) &&
+    (filters.agent==="all" || r.agent===filters.agent) &&
+    (filters.ce==="all" || r.ce===filters.ce) &&
+    (filters.sts==="all" || r.sts===filters.sts) &&
+    (filters.topic==="all" || r.callTopic===filters.topic)
+  );
+}
+
+/* ================= RENDER ORCHESTRATOR ================= */
+function renderAll(){
+  const rows = getFiltered();
+  document.getElementById("stRows").textContent = RAW.length;
+  document.getElementById("stFiltered").textContent = rows.length;
+  const maxDate = RAW.reduce((m,r)=> (!m || r.dateObj>m) ? r.dateObj : m, null);
+  document.getElementById("stLastDate").textContent = maxDate ? fmtDate(maxDate) : "-";
+
+  renderKPIs(rows);
+  renderInsights(rows);
+  renderDailyChart(rows);
+  renderDonut(rows);
+  renderTopicChart(rows);
+  renderCallTopicChart(rows);
+  renderEvaluatorMatrix(rows);
+  renderPendingTracker();
+  renderEvaluatorTable(rows);
+  renderAgentTable(rows);
+  renderTopicTable(rows);
+}
+
+/* ================= KPIs ================= */
+function renderKPIs(rows){
+  const total = rows.length;
+  const ceFail = rows.filter(r=>r.ce==="Fail").length;
+  const stsFail = rows.filter(r=>r.sts==="Fail").length;
+  const agents = new Set(rows.map(r=>r.agent)).size;
+  const evals = new Set(rows.map(r=>r.evaluator)).size;
+  const durs = rows.map(r=>r.durationSec).filter(d=>d!=null);
+  const avgDur = durs.length ? durs.reduce((a,b)=>a+b,0)/durs.length : null;
+
+  document.getElementById("kTotal").textContent = total;
+  document.getElementById("kCEFail").textContent = ceFail;
+  document.getElementById("kCEFailRate").textContent = pctStr(ceFail,total)+" fail rate";
+  document.getElementById("kSTSFail").textContent = stsFail;
+  document.getElementById("kSTSFailRate").textContent = pctStr(stsFail,total)+" fail rate";
+  document.getElementById("kAgents").textContent = agents;
+  document.getElementById("kEvals").textContent = evals;
+  document.getElementById("kDur").textContent = secToMMSS(avgDur);
+}
+
+/* ================= INSIGHTS ================= */
+function renderInsights(rows){
+  const box = document.getElementById("insightsBox");
+  const cards = [];
+  const total = rows.length;
+  if(total===0){
+    box.innerHTML = `<div class="insight-card warn"><div class="tag">No Data</div><div class="txt">No audits match the current filters. Try widening the filter selection.</div></div>`;
+    return;
+  }
+
+  // Top failure topic
+  const topicCounts = {};
+  rows.filter(r=>r.ce==="Fail").forEach(r=>{
+    const topics = parseTopics(r.errorTopicRaw);
+    (topics.length? topics : ["Unspecified"]).forEach(t=> topicCounts[t]=(topicCounts[t]||0)+1);
+  });
+  const topicSorted = Object.entries(topicCounts).sort((a,b)=>b[1]-a[1]);
+  if(topicSorted.length){
+    const [topT, topC] = topicSorted[0];
+    const ceFailTotal = rows.filter(r=>r.ce==="Fail").length;
+    cards.push({cls:"bad", tag:"Top Failure Driver", txt:`<b>${escHtml(topT)}</b> is the most frequent critical-error topic with <b>${topC}</b> occurrences (${pctStr(topC,ceFailTotal)} of all critical fails).`});
+  }
+
+  // Most audited agent
+  const agentCounts = {};
+  rows.forEach(r=> agentCounts[r.agent]=(agentCounts[r.agent]||0)+1);
+  const agentSorted = Object.entries(agentCounts).sort((a,b)=>b[1]-a[1]);
+  if(agentSorted.length){
+    cards.push({cls:"", tag:"Most Audited Agent", txt:`<b>${escHtml(agentSorted[0][0])}</b> has been audited <b>${agentSorted[0][1]}</b> times in this filter — the highest audit volume.`});
+  }
+
+  // Highest CE fail rate agent (min 3 audits)
+  const agentStats = {};
+  rows.forEach(r=>{
+    agentStats[r.agent] = agentStats[r.agent] || {total:0, fail:0};
+    agentStats[r.agent].total++;
+    if(r.ce==="Fail") agentStats[r.agent].fail++;
+  });
+  const riskAgents = Object.entries(agentStats).filter(([,v])=>v.total>=3).map(([k,v])=>[k, pct(v.fail,v.total), v]).sort((a,b)=>b[1]-a[1]);
+  if(riskAgents.length){
+    const [name, rate, v] = riskAgents[0];
+    cards.push({cls:"bad", tag:"Highest Risk Agent", txt:`<b>${escHtml(name)}</b> has the highest critical-error fail rate at <b>${rate.toFixed(1)}%</b> (${v.fail}/${v.total} audits, min. 3 audits considered).`});
+  }
+
+  // Most active evaluator
+  const evalCounts = {};
+  rows.forEach(r=> evalCounts[r.evaluator]=(evalCounts[r.evaluator]||0)+1);
+  const evalSorted = Object.entries(evalCounts).sort((a,b)=>b[1]-a[1]);
+  if(evalSorted.length){
+    cards.push({cls:"good", tag:"Most Active Evaluator", txt:`<b>${escHtml(evalSorted[0][0])}</b> logged the most audits: <b>${evalSorted[0][1]}</b> in the current filter.`});
+  }
+
+  // Trend: last 7 days vs previous 7 days CE fail rate
+  const byDate = {};
+  rows.forEach(r=>{ byDate[r.dateKey] = byDate[r.dateKey] || []; byDate[r.dateKey].push(r); });
+  const dateKeys = Object.keys(byDate).sort((a,b)=>new Date(a)-new Date(b));
+  if(dateKeys.length>=4){
+    const half = Math.ceil(dateKeys.length/2);
+    const firstHalf = dateKeys.slice(0,half).flatMap(d=>byDate[d]);
+    const secondHalf = dateKeys.slice(half).flatMap(d=>byDate[d]);
+    const r1 = pct(firstHalf.filter(r=>r.ce==="Fail").length, firstHalf.length);
+    const r2 = pct(secondHalf.filter(r=>r.ce==="Fail").length, secondHalf.length);
+    const diff = r2 - r1;
+    const dir = diff>0.5 ? "worsened" : diff<-0.5 ? "improved" : "stayed stable";
+    const cls = diff>0.5 ? "bad" : diff<-0.5 ? "good" : "";
+    cards.push({cls, tag:"Fail Rate Trend", txt:`Critical-error fail rate ${dir} from <b>${r1.toFixed(1)}%</b> (earlier period) to <b>${r2.toFixed(1)}%</b> (recent period) within the selected range.`});
+  }
+
+  // Call topic most linked to fails
+  const topicFail = {};
+  rows.forEach(r=>{
+    topicFail[r.callTopic] = topicFail[r.callTopic] || {total:0, fail:0};
+    topicFail[r.callTopic].total++;
+    if(r.ce==="Fail") topicFail[r.callTopic].fail++;
+  });
+  const topicFailSorted = Object.entries(topicFail).filter(([,v])=>v.total>=2).map(([k,v])=>[k, pct(v.fail,v.total), v]).sort((a,b)=>b[1]-a[1]);
+  if(topicFailSorted.length && topicFailSorted[0][1]>0){
+    const [name, rate, v] = topicFailSorted[0];
+    cards.push({cls:"warn", tag:"Riskiest Call Topic", txt:`Calls about <b>${escHtml(name)}</b> show the highest critical-fail rate: <b>${rate.toFixed(1)}%</b> (${v.fail}/${v.total}).`});
+  }
+
+  // STS insight
+  const stsFail = rows.filter(r=>r.sts==="Fail").length;
+  cards.push({cls: stsFail/total>0.15?"warn":"", tag:"STS Health", txt:`STS fail rate stands at <b>${pctStr(stsFail,total)}</b> across <b>${total}</b> audited calls in this filter.`});
+
+  // Duration insight
+  const failDurs = rows.filter(r=>r.ce==="Fail" && r.durationSec!=null).map(r=>r.durationSec);
+  const passDurs = rows.filter(r=>r.ce==="Pass" && r.durationSec!=null).map(r=>r.durationSec);
+  if(failDurs.length && passDurs.length){
+    const avgFail = failDurs.reduce((a,b)=>a+b,0)/failDurs.length;
+    const avgPass = passDurs.reduce((a,b)=>a+b,0)/passDurs.length;
+    const longer = avgFail>avgPass;
+    cards.push({cls:"", tag:"Call Duration Pattern", txt:`Failed calls average <b>${secToMMSS(avgFail)}</b> vs <b>${secToMMSS(avgPass)}</b> for passed calls — failed calls run ${longer?"longer":"shorter"} on average.`});
+  }
+
+  // Pending audits today (always from full RAW data, independent of filters)
+  const { dateKey, todayPending } = getPendingStats();
+  if(todayPending.length){
+    const totalRemaining = todayPending.reduce((a,g)=>a+g.remaining,0);
+    cards.push({cls:"warn", tag:"Pending Audits", txt:`As of <b>${dateKey}</b>, <b>${todayPending.length}</b> agent audit(s) are still incomplete across evaluators, needing <b>${totalRemaining}</b> more calls combined. See the Pending Audit Tracker below.`});
+  } else if(dateKey){
+    cards.push({cls:"good", tag:"Pending Audits", txt:`All agent audits for <b>${dateKey}</b> are complete as per the 2-Fail-stop / 1-Fail-plus-5-Pass / 10-Pass rule.`});
+  }
+
+  box.innerHTML = cards.map(c=>`<div class="insight-card ${c.cls}"><div class="tag">${c.tag}</div><div class="txt">${c.txt}</div></div>`).join("");
+}
+
+/* ================= CHARTS ================= */
+function themeColors(){
+  const dark = !document.body.classList.contains("light");
+  return {
+    text: dark? "#8b97b8":"#5b6684",
+    grid: dark? "#1c2842":"#e7ebf6"
+  };
+}
+function destroyChart(key){ if(charts[key]){ charts[key].destroy(); delete charts[key]; } }
+
+function renderDailyChart(rows){
+  const byDate = {};
+  rows.forEach(r=>{
+    byDate[r.dateKey] = byDate[r.dateKey] || {total:0, fail:0, dateObj:r.dateObj};
+    byDate[r.dateKey].total++;
+    if(r.ce==="Fail") byDate[r.dateKey].fail++;
+  });
+  const keys = Object.keys(byDate).sort((a,b)=>byDate[a].dateObj-byDate[b].dateObj);
+  const tc = themeColors();
+  destroyChart("daily");
+  charts.daily = new Chart(document.getElementById("chartDaily"), {
+    type:"line",
+    data:{
+      labels: keys,
+      datasets:[
+        {label:"Total Audits", data:keys.map(k=>byDate[k].total), borderColor:"#22d3ee", backgroundColor:"rgba(34,211,238,.12)", fill:true, tension:.3, yAxisID:"y"},
+        {label:"Critical Error Fail", data:keys.map(k=>byDate[k].fail), borderColor:"#fb7185", backgroundColor:"rgba(251,113,133,.12)", fill:true, tension:.3, yAxisID:"y"}
+      ]
+    },
+    options:{ responsive:true, plugins:{legend:{labels:{color:tc.text}}}, scales:{
+      x:{ticks:{color:tc.text},grid:{color:tc.grid}},
+      y:{ticks:{color:tc.text},grid:{color:tc.grid},beginAtZero:true}
+    }}
+  });
+}
+
+function renderDonut(rows){
+  const cePass = rows.filter(r=>r.ce==="Pass").length;
+  const ceFail = rows.filter(r=>r.ce==="Fail").length;
+  const stsPass = rows.filter(r=>r.sts==="Pass").length;
+  const stsFail = rows.filter(r=>r.sts==="Fail").length;
+  const tc = themeColors();
+  destroyChart("donut");
+  charts.donut = new Chart(document.getElementById("chartDonut"), {
+    type:"doughnut",
+    data:{
+      labels:["CE Pass","CE Fail","STS Pass","STS Fail"],
+      datasets:[{ data:[cePass,ceFail,stsPass,stsFail], backgroundColor:["#34d399","#fb7185","#818cf8","#fbbf24"] }]
+    },
+    options:{ responsive:true, plugins:{legend:{position:"bottom",labels:{color:tc.text}}} }
+  });
+}
+
+function renderTopicChart(rows){
+  const topicCounts = {};
+  rows.filter(r=>r.ce==="Fail").forEach(r=>{
+    const topics = parseTopics(r.errorTopicRaw);
+    (topics.length? topics : ["Unspecified"]).forEach(t=> topicCounts[t]=(topicCounts[t]||0)+1);
+  });
+  const sorted = Object.entries(topicCounts).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  const tc = themeColors();
+  destroyChart("topics");
+  charts.topics = new Chart(document.getElementById("chartTopics"), {
+    type:"bar",
+    data:{ labels: sorted.map(s=>s[0]), datasets:[{label:"Occurrences", data:sorted.map(s=>s[1]), backgroundColor:"#fb7185"}] },
+    options:{ indexAxis:"y", responsive:true, plugins:{legend:{display:false}}, scales:{
+      x:{ticks:{color:tc.text},grid:{color:tc.grid},beginAtZero:true},
+      y:{ticks:{color:tc.text},grid:{color:tc.grid}}
+    }}
+  });
+}
+
+function renderCallTopicChart(rows){
+  const counts = {};
+  rows.forEach(r=> counts[r.callTopic]=(counts[r.callTopic]||0)+1);
+  const sorted = Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  const tc = themeColors();
+  destroyChart("callTopic");
+  charts.callTopic = new Chart(document.getElementById("chartCallTopic"), {
+    type:"bar",
+    data:{ labels: sorted.map(s=>s[0]), datasets:[{label:"Calls", data:sorted.map(s=>s[1]), backgroundColor:"#818cf8"}] },
+    options:{ indexAxis:"y", responsive:true, plugins:{legend:{display:false}}, scales:{
+      x:{ticks:{color:tc.text},grid:{color:tc.grid},beginAtZero:true},
+      y:{ticks:{color:tc.text},grid:{color:tc.grid}}
+    }}
+  });
+}
+
+/* ================= EVALUATOR x DATE MATRIX ================= */
+function renderEvaluatorMatrix(rows){
+  const evals = uniqueSorted(rows.map(r=>r.evaluator));
+  const dateMap = {};
+  rows.forEach(r=>{ dateMap[r.dateKey] = r.dateObj; });
+  const dates = Object.keys(dateMap).sort((a,b)=>dateMap[a]-dateMap[b]);
+  const grid = {};
+  let max = 0;
+  rows.forEach(r=>{
+    grid[r.evaluator] = grid[r.evaluator] || {};
+    grid[r.evaluator][r.dateKey] = (grid[r.evaluator][r.dateKey]||0)+1;
+    max = Math.max(max, grid[r.evaluator][r.dateKey]);
+  });
+
+  let html = `<table class="matrix"><thead><tr><th class="evrow">Evaluator</th>`;
+  dates.forEach(d=> html += `<th>${d}</th>`);
+  html += `<th>Total</th></tr></thead><tbody>`;
+  evals.forEach(ev=>{
+    let total = 0;
+    html += `<tr><td class="evname">${escHtml(ev)}</td>`;
+    dates.forEach(d=>{
+      const v = (grid[ev] && grid[ev][d]) || 0;
+      total += v;
+      const intensity = max>0 ? v/max : 0;
+      const bg = v===0 ? "transparent" : `rgba(34,211,238,${0.15 + intensity*0.75})`;
+      html += `<td class="cell" style="background:${bg}">${v||""}</td>`;
+    });
+    html += `<td><b>${total}</b></td></tr>`;
+  });
+  html += `</tbody></table>`;
+  document.getElementById("evalMatrixWrap").innerHTML = evals.length ? html : `<p class="note">No data for current filter.</p>`;
+}
+
+/* ================= PENDING AUDIT TRACKER (always from RAW, not filtered) ================= */
+function getLatestDateInfo(){
+  const latest = RAW.reduce((m,r)=> (!m || r.dateObj>m) ? r.dateObj : m, null);
+  return { dateObj: latest, dateKey: latest? fmtDate(latest): null, monthKey: latest? monthKeyOf(latest): null };
+}
+function getPendingStats(){
+  const { dateKey, monthKey } = getLatestDateInfo();
+  const allGroups = computeAuditGroups(RAW);
+  const todayPending = allGroups.filter(g=> g.dateKey===dateKey && !g.completed);
+  const monthPending = allGroups.filter(g=> monthKeyOf(g.dateObj)===monthKey && !g.completed);
+  const byEvalToday = {}, byEvalMonth = {};
+  todayPending.forEach(g=> byEvalToday[g.evaluator]=(byEvalToday[g.evaluator]||0)+1);
+  monthPending.forEach(g=> byEvalMonth[g.evaluator]=(byEvalMonth[g.evaluator]||0)+1);
+  return { dateKey, monthKey, todayPending, monthPending, byEvalToday, byEvalMonth };
+}
+function renderPendingTracker(){
+  const { dateKey, todayPending } = getPendingStats();
+  document.getElementById("pendingAsOf").textContent =
+    `As of ${dateKey || "-"} · rule: 2 Fail = stop, 1 Fail = +5 Pass needed, 0 Fail = 10 Pass needed`;
+  const sorted = [...todayPending].sort((a,b)=> b.remaining - a.remaining);
+  const thead = `<tr><th>Evaluator</th><th>Agent ID</th><th>Calls Done</th><th>Critical Fails</th><th>Remaining Needed</th><th>Status</th></tr>`;
+  const tbody = sorted.map(g=>`<tr>
+    <td>${escHtml(g.evaluator)}</td>
+    <td>${escHtml(g.agent)}</td>
+    <td>${g.callsDone}</td>
+    <td>${g.failCount}</td>
+    <td><b>${g.remaining}</b></td>
+    <td><span class="badge ${g.failCount>=1?'fail':'na'}">${g.status}</span></td>
+  </tr>`).join("");
+  document.querySelector("#pendingTable thead").innerHTML = thead;
+  document.querySelector("#pendingTable tbody").innerHTML = tbody || `<tr><td colspan="6">No pending audits for the latest date — all agent audits completed 🎉</td></tr>`;
+}
+
+/* ================= EVALUATOR TABLE ================= */
+function renderEvaluatorTable(rows){
+  const stats = {};
+  rows.forEach(r=>{
+    stats[r.evaluator] = stats[r.evaluator] || {total:0, ceFail:0, stsFail:0, dates:new Set(), lastDate:null};
+    const s = stats[r.evaluator];
+    s.total++;
+    if(r.ce==="Fail") s.ceFail++;
+    if(r.sts==="Fail") s.stsFail++;
+    s.dates.add(r.dateKey);
+    if(!s.lastDate || r.dateObj>s.lastDate) s.lastDate = r.dateObj;
+  });
+  const { byEvalToday, byEvalMonth } = getPendingStats();
+  let data = Object.entries(stats).map(([name,s])=>({
+    name, total:s.total, ceFail:s.ceFail, ceFailRate:pct(s.ceFail,s.total),
+    stsFail:s.stsFail, stsFailRate:pct(s.stsFail,s.total),
+    activeDays:s.dates.size, lastDate:s.lastDate,
+    pendingToday: byEvalToday[name]||0, pendingMonth: byEvalMonth[name]||0
+  }));
+  data = sortData(data, sortState.eval);
+
+  const thead = `<tr>
+    <th data-key="name" data-tbl="eval">Evaluator</th>
+    <th data-key="total" data-tbl="eval">Total Audits</th>
+    <th data-key="ceFail" data-tbl="eval">CE Fail</th>
+    <th data-key="ceFailRate" data-tbl="eval">CE Fail %</th>
+    <th data-key="stsFail" data-tbl="eval">STS Fail</th>
+    <th data-key="stsFailRate" data-tbl="eval">STS Fail %</th>
+    <th data-key="activeDays" data-tbl="eval">Active Days</th>
+    <th data-key="pendingToday" data-tbl="eval">Pending (Today)</th>
+    <th data-key="pendingMonth" data-tbl="eval">Pending (Month)</th>
+    <th data-key="lastDate" data-tbl="eval">Last Audit</th>
+  </tr>`;
+  const tbody = data.map(d=>`<tr>
+    <td>${escHtml(d.name)}</td>
+    <td>${d.total}</td>
+    <td>${d.ceFail}</td>
+    <td>${d.ceFailRate.toFixed(1)}%</td>
+    <td>${d.stsFail}</td>
+    <td>${d.stsFailRate.toFixed(1)}%</td>
+    <td>${d.activeDays}</td>
+    <td>${d.pendingToday ? `<span class="badge fail">${d.pendingToday}</span>` : `<span class="badge pass">0</span>`}</td>
+    <td>${d.pendingMonth ? `<span class="badge fail">${d.pendingMonth}</span>` : `<span class="badge pass">0</span>`}</td>
+    <td>${fmtDate(d.lastDate)}</td>
+  </tr>`).join("");
+  document.querySelector("#evalTable thead").innerHTML = thead;
+  document.querySelector("#evalTable tbody").innerHTML = tbody || `<tr><td colspan="8">No data</td></tr>`;
+  attachSortHandlers();
+}
+
+/* ================= AGENT TABLE (no evaluator column) ================= */
+function renderAgentTable(rows){
+  const stats = {};
+  rows.forEach(r=>{
+    stats[r.agent] = stats[r.agent] || {total:0, cePass:0, ceFail:0, stsFail:0, topics:{}, lastDate:null};
+    const s = stats[r.agent];
+    s.total++;
+    if(r.ce==="Pass") s.cePass++;
+    if(r.ce==="Fail"){
+      s.ceFail++;
+      const topics = parseTopics(r.errorTopicRaw);
+      (topics.length?topics:["Unspecified"]).forEach(t=> s.topics[t]=(s.topics[t]||0)+1);
+    }
+    if(r.sts==="Fail") s.stsFail++;
+    if(!s.lastDate || r.dateObj>s.lastDate) s.lastDate = r.dateObj;
+  });
+  let data = Object.entries(stats).map(([name,s])=>{
+    const topTopic = Object.entries(s.topics).sort((a,b)=>b[1]-a[1])[0];
+    return {
+      name, total:s.total, cePass:s.cePass, ceFail:s.ceFail,
+      ceFailRate:pct(s.ceFail,s.total), stsFailRate:pct(s.stsFail,s.total),
+      topTopic: topTopic? `${topTopic[0]} (${topTopic[1]})` : "-",
+      lastDate:s.lastDate
+    };
+  });
+  data = sortData(data, sortState.agent);
+
+  const thead = `<tr>
+    <th data-key="name" data-tbl="agent">Agent ID</th>
+    <th data-key="total" data-tbl="agent">Total Audits</th>
+    <th data-key="cePass" data-tbl="agent">CE Pass</th>
+    <th data-key="ceFail" data-tbl="agent">CE Fail</th>
+    <th data-key="ceFailRate" data-tbl="agent">CE Fail %</th>
+    <th data-key="stsFailRate" data-tbl="agent">STS Fail %</th>
+    <th data-key="topTopic" data-tbl="agent">Top Error Topic</th>
+    <th data-key="lastDate" data-tbl="agent">Last Audited</th>
+  </tr>`;
+  const tbody = data.map(d=>`<tr class="agentRow" data-agent="${escAttr(d.name)}">
+    <td>${escHtml(d.name)}</td>
+    <td>${d.total}</td>
+    <td>${d.cePass}</td>
+    <td>${d.ceFail}</td>
+    <td>${d.ceFailRate.toFixed(1)}%</td>
+    <td>${d.stsFailRate.toFixed(1)}%</td>
+    <td>${escHtml(d.topTopic)}</td>
+    <td>${fmtDate(d.lastDate)}</td>
+  </tr>`).join("");
+  document.querySelector("#agentTable thead").innerHTML = thead;
+  document.querySelector("#agentTable tbody").innerHTML = tbody || `<tr><td colspan="8">No data</td></tr>`;
+  attachSortHandlers();
+
+  document.querySelectorAll(".agentRow").forEach(tr=>{
+    tr.style.cursor="pointer";
+    tr.addEventListener("click", ()=> openAgentModal(tr.dataset.agent));
+  });
+}
+
+/* ================= TOPIC TABLE ================= */
+function renderTopicTable(rows){
+  const failRows = rows.filter(r=>r.ce==="Fail");
+  const totalFail = failRows.length;
+  const topicStats = {};
+  failRows.forEach(r=>{
+    const topics = parseTopics(r.errorTopicRaw);
+    (topics.length?topics:["Unspecified"]).forEach(t=>{
+      topicStats[t] = topicStats[t] || {count:0, agents:new Set()};
+      topicStats[t].count++;
+      topicStats[t].agents.add(r.agent);
+    });
+  });
+  const data = Object.entries(topicStats).map(([topic,s])=>({topic, count:s.count, agents:s.agents.size}))
+    .sort((a,b)=>b.count-a.count);
+  const thead = `<tr><th>Error Topic</th><th>Fail Count</th><th>% of Critical Fails</th><th>Agents Affected</th></tr>`;
+  const tbody = data.map(d=>`<tr>
+    <td>${escHtml(d.topic)}</td>
+    <td>${d.count}</td>
+    <td>${pctStr(d.count,totalFail)}</td>
+    <td>${d.agents}</td>
+  </tr>`).join("");
+  document.querySelector("#topicTable thead").innerHTML = thead;
+  document.querySelector("#topicTable tbody").innerHTML = tbody || `<tr><td colspan="4">No critical-error fails in this filter.</td></tr>`;
+}
+
+/* ================= SORT ================= */
+function sortData(data, state){
+  return data.sort((a,b)=>{
+    let av=a[state.key], bv=b[state.key];
+    if(av instanceof Date || bv instanceof Date){ av=av?av.getTime():0; bv=bv?bv.getTime():0; }
+    if(typeof av==="string") return state.dir * av.localeCompare(bv);
+    return state.dir * ((av||0)-(bv||0));
+  });
+}
+function attachSortHandlers(){
+  document.querySelectorAll("th[data-key]").forEach(th=>{
+    th.onclick = ()=>{
+      const tbl = th.dataset.tbl, key = th.dataset.key;
+      const state = sortState[tbl];
+      if(state.key===key) state.dir *= -1; else { state.key=key; state.dir=-1; }
+      const rows = getFiltered();
+      if(tbl==="eval") renderEvaluatorTable(rows); else renderAgentTable(rows);
+    };
+  });
+}
+
+/* ================= AGENT MODAL (evaluator hidden) ================= */
+function openAgentModal(agent){
+  const rows = RAW.filter(r=>r.agent===agent);
+  document.getElementById("modalTitle").textContent = `Agent: ${agent}`;
+  const total = rows.length;
+  const ceFail = rows.filter(r=>r.ce==="Fail").length;
+  const stsFail = rows.filter(r=>r.sts==="Fail").length;
+  const recent = [...rows].sort((a,b)=>b.dateObj-a.dateObj).slice(0,25);
+  let html = `<p class="note">Since evaluators are peer agents auditing each other's calls, auditor identity is hidden in this view to keep the process unbiased. Showing ${total} audits · CE Fail ${ceFail} (${pctStr(ceFail,total)}) · STS Fail ${stsFail} (${pctStr(stsFail,total)})</p>`;
+  html += `<div class="table-wrap"><table><thead><tr><th>Date</th><th>Critical Error</th><th>STS</th><th>Call Topic</th><th>Error Topic</th><th>Duration</th></tr></thead><tbody>`;
+  recent.forEach(r=>{
+    html += `<tr>
+      <td>${r.dateKey}</td>
+      <td><span class="badge ${r.ce==='Fail'?'fail':r.ce==='Pass'?'pass':'na'}">${r.ce}</span></td>
+      <td><span class="badge ${r.sts==='Fail'?'fail':r.sts==='Pass'?'pass':'na'}">${r.sts}</span></td>
+      <td>${escHtml(r.callTopic)}</td>
+      <td>${escHtml(parseTopics(r.errorTopicRaw).join(", ") || "-")}</td>
+      <td>${secToMMSS(r.durationSec)}</td>
+    </tr>`;
+  });
+  html += `</tbody></table></div>`;
+  document.getElementById("modalBody").innerHTML = html;
+  document.getElementById("agentModalBg").classList.add("show");
+}
+document.getElementById("modalClose").onclick = ()=> document.getElementById("agentModalBg").classList.remove("show");
+document.getElementById("agentModalBg").addEventListener("click",(e)=>{ if(e.target.id==="agentModalBg") e.currentTarget.classList.remove("show"); });
+
+/* ================= EXPORT CSV ================= */
+document.getElementById("exportBtn").onclick = ()=>{
+  const rows = getFiltered();
+  const headers = ["Date","Evaluator ID","Agent ID","Critical Error","STS","Error Topic","Call Topic","Call Duration"];
+  const lines = [headers.join(",")];
+  rows.forEach(r=>{
+    const vals = [r.dateKey, r.evaluator, r.agent, r.ce, r.sts, parseTopics(r.errorTopicRaw).join(" | "), r.callTopic, secToMMSS(r.durationSec)];
+    lines.push(vals.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(","));
+  });
+  const blob = new Blob([lines.join("\n")], {type:"text/csv"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `qa_audit_export_${Date.now()}.csv`;
+  a.click();
+};
+
+/* ================= THEME ================= */
+document.getElementById("themeBtn").onclick = ()=>{
+  document.body.classList.toggle("light");
+  const light = document.body.classList.contains("light");
+  document.getElementById("themeBtn").textContent = light ? "☀️ Light" : "🌙 Dark";
+  renderAll();
+};
+
+/* ================= FILTER EVENTS ================= */
+["fMonth","fDate","fEval","fAgent","fCE","fSTS","fTopic"].forEach(id=>{
+  document.getElementById(id).addEventListener("change",(e)=>{
+    const map = {fMonth:"month",fDate:"date",fEval:"evaluator",fAgent:"agent",fCE:"ce",fSTS:"sts",fTopic:"topic"};
+    filters[map[id]] = e.target.value;
+    renderAll();
+  });
+});
+document.getElementById("resetBtn").onclick = ()=>{
+  filters = { month:"all", date:"all", evaluator:"all", agent:"all", ce:"all", sts:"all", topic:"all" };
+  ["fMonth","fDate","fEval","fAgent","fCE","fSTS","fTopic"].forEach(id=> document.getElementById(id).value="all");
+  renderAll();
+};
+document.getElementById("refreshBtn").onclick = ()=> loadData(true);
+
+/* ================= FAIL CALL SNAPSHOT (AI-organized, no auditor name) ================= */
+async function generateFailSnapshot(){
+  const btn = document.getElementById("snapGenBtn");
+  const statusEl = document.getElementById("snapStatus");
+  const failRows = getFiltered().filter(r=>r.ce==="Fail");
+  if(!failRows.length){
+    statusEl.textContent = "No Critical Error Fail rows in the current filter.";
+    document.getElementById("snapshotContainer").innerHTML = "";
+    document.getElementById("snapDownloadBtn").style.display = "none";
+    return;
+  }
+  const capped = failRows.slice(0, 40);
+  btn.disabled = true; btn.textContent = "Generating...";
+  statusEl.textContent = `Rewriting ${capped.length} remark(s) into organized English...`;
+  try{
+    const payload = capped.map((r,i)=>({
+      id: i+1,
+      remarks: r.remarks || r.empathy || r.errorTopicRaw || "(no remarks provided)"
+    }));
+    const prompt = `You are cleaning up call-audit remarks for an internal QA report.
+Below is a JSON array of failed-call remarks written by auditors (may be in Bengali, English, or mixed).
+For each item, rewrite the "remarks" field into ONE short, professional, organized English sentence (max 25 words) describing the issue factually. Do not invent details not present in the original text.
+Never include any person's name (auditor, QA, evaluator, agent) in the rewritten text — refer generically if needed (e.g. "the auditor noted...").
+Respond ONLY with a valid JSON array, no markdown fences, no preamble, same order and ids, format exactly like: [{"id":1,"text":"..."}]
+
+Input:
+${JSON.stringify(payload)}`;
+
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-6",
+        max_tokens: 1500,
+        messages: [{ role: "user", content: prompt }]
+      })
+    });
+    const data = await res.json();
+    const rawText = (data.content || []).map(c => c.text || "").join("");
+    const clean = rawText.replace(/```json|```/g, "").trim();
+    const parsed = JSON.parse(clean);
+    const map = {};
+    parsed.forEach(p => { map[p.id] = p.text; });
+
+    const results = capped.map((r,i)=>{
+      const topics = parseTopics(r.errorTopicRaw);
+      const topicLabel = topics.length ? `${r.callTopic} / ${topics.join(", ")}` : r.callTopic;
+      return {
+        no: i+1,
+        contactId: r.contactId || "-",
+        date: r.dateKey,
+        topic: topicLabel,
+        text: map[i+1] || r.remarks || "-"
+      };
+    });
+    renderSnapshotTable(results, failRows.length, capped.length);
+  }catch(err){
+    console.error(err);
+    statusEl.textContent = "Could not generate snapshot right now. Please try again.";
+  }finally{
+    btn.disabled = false; btn.textContent = "🔄 Generate Snapshot";
+  }
+}
+
+function renderSnapshotTable(results, totalFail, shown){
+  document.getElementById("snapStatus").textContent = shown < totalFail
+    ? `Showing ${shown} of ${totalFail} failed calls (capped for performance).`
+    : `Showing all ${shown} failed call(s) in the current filter.`;
+
+  let html = `<div id="snapCard" style="background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:18px;">
+    <h3 style="margin-top:0;">Failed Call Remarks — Organized Summary</h3>
+    <div class="table-wrap"><table><thead><tr><th>#</th><th>Contact ID</th><th>Date</th><th>Topic</th><th>Organized Remarks</th></tr></thead><tbody>`;
+  results.forEach(r=>{
+    html += `<tr><td>${r.no}</td><td>${escHtml(r.contactId)}</td><td>${r.date}</td><td>${escHtml(r.topic)}</td><td>${escHtml(r.text)}</td></tr>`;
+  });
+  html += `</tbody></table></div></div>`;
+  document.getElementById("snapshotContainer").innerHTML = html;
+  document.getElementById("snapDownloadBtn").style.display = "inline-flex";
+}
+
+document.getElementById("snapGenBtn").addEventListener("click", generateFailSnapshot);
+document.getElementById("snapDownloadBtn").addEventListener("click", ()=>{
+  const el = document.getElementById("snapCard");
+  if(!el || typeof html2canvas === "undefined") return;
+  html2canvas(el, { backgroundColor: null, scale: 2 }).then(canvas=>{
+    const link = document.createElement("a");
+    link.download = `fail_call_snapshot_${Date.now()}.png`;
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+  });
+});
+
+/* ================= INIT ================= */
+loadData(false);
+setInterval(()=> loadData(true), REFRESH_MS);
+</script>
+</body>
+</html>
